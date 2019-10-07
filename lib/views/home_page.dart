@@ -1,3 +1,4 @@
+import 'package:dynamic_theme/dynamic_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:search_cep/models/ResultCep.dart';
@@ -28,6 +29,13 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: Icon(Icons.lightbulb_outline),
             onPressed: () {
+              changeBrightness();
+
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: () {
               Share.share('check out my website https://example.com');
             },
           )
@@ -38,6 +46,10 @@ class _HomePageState extends State<HomePage> {
         child: _buildForm(),
       ),
     );
+  }
+
+  void changeBrightness() {
+    DynamicTheme.of(context).setBrightness(Theme.of(context).brightness == Brightness.dark? Brightness.light: Brightness.dark);
   }
 
   Widget _buildForm() {
@@ -54,8 +66,41 @@ class _HomePageState extends State<HomePage> {
   Widget _buildResultCepText() {
     return Padding(
       padding: EdgeInsets.only(top: 20),
-      child: Text(
-        _resultCep != null ? _resultCep.toJson() : 'Digite um CEP!'
+      child: (
+        _resultCep != null ? _printCepData(_resultCep) : Text('Digite um CEP!')
+      ),
+    );
+  }
+
+  Widget _printCepData(cep) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _cepLinePrint('Cep', cep.cep),
+        _cepLinePrint('Logradouro', cep.logradouro),
+        _cepLinePrint('Complemento', cep.complemento),
+        _cepLinePrint('Bairro', cep.bairro),
+        _cepLinePrint('Localidade', cep.localidade),
+        _cepLinePrint('UF', cep.uf),
+        _cepLinePrint('Unidade', cep.unidade),
+        _cepLinePrint('Ibge', cep.ibge),
+        _cepLinePrint('Gia', cep.gia),
+        
+      ],
+    );
+  }
+
+  Widget _cepLinePrint(title, value) {
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          fontSize: 16.0,
+          color: Colors.black
+        ),
+        children: <TextSpan>[
+          TextSpan(text: '$title: ', style: TextStyle(fontWeight: FontWeight.bold)),
+          TextSpan(text: value)
+        ]
       ),
     );
   }
@@ -64,7 +109,8 @@ class _HomePageState extends State<HomePage> {
     return TextFormField(
       // autofocus: true,
       inputFormatters: [
-        LengthLimitingTextInputFormatter(8)
+        LengthLimitingTextInputFormatter(8),
+        WhitelistingTextInputFormatter.digitsOnly
       ],
       keyboardType: TextInputType.number,
       textInputAction: TextInputAction.done,
@@ -125,8 +171,18 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
-      final result = await ViaCepService.fetchCep(cep: cep);
-      
+      var result = await ViaCepService.fetchCep(cep: cep);
+
+      if (result.cep == null) {
+
+        Flushbar(
+          title: "Ops...",
+          message: "CEP Desconhecido! =(",
+          duration: Duration(seconds: 3),
+        ).show(context);
+
+        result = null;
+      }      
 
       setState(() {
         _resultCep = result;
